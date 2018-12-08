@@ -41,7 +41,7 @@ prime 1 = False
 prime n = null [ i | i<-[2..sqn], n `mod` i == 0]
   -- заради строгата типова система използваме два помощни
   -- функции за кастване от/към число с плаваща запетая
-  where sqn = floor (sqrt (fromIntegral n))
+  where sqn = floor . sqrt . fromIntegral $ n
 
 primes :: [Integer]
 primes = filter prime [1..]
@@ -62,9 +62,42 @@ descartes lst1 lst2 = [(x,y) | x<-lst1, y<-lst2]
 --natPairs = descartes [1..] [1..]
 
 natPairs :: [(Integer,Integer)]
-natPairs = [ (x,sum-x) | sum<-[2..], x<-[1..sum-1] ]
+natPairs = [ (x,sum-x) | sum<-[2..],
+                         x<-[1..sum-1] ]
 
--- Аналогично генерираме Питагоровите тройки, фиксирайки a<b<c за пригледност
+-- Максимално ефективно решение
 pythTriples :: [(Integer,Integer,Integer)]
-pythTriples = [ (a,b,c) | c<-[5..], b<-[1..c], a<-[1..b], a^2+b^2==c^2 ]
+pythTriples = [ (a,b,c) | c<-[5..],
+                          let sht = floor (sqrt' (c^2 `div` 2)),
+                          a<-[1..sht],
+                          let f = sqrt'(c^2-a^2),
+                          let b = floor f,
+                          floor f == ceiling f]
+  where sqrt' n = sqrt (fromIntegral n)
 
+-- Помощна функция за компресията
+countMyHead :: Eq a => [a] -> Int
+countMyHead lst = length (takeWhile (== head lst) lst)
+
+-- a.k.a. run-length encoding
+compress :: Eq a => [a] -> [(a,Int)]
+compress [] = []
+compress lst = (head lst, count) : compress (drop count lst)
+  where count = countMyHead lst
+
+compress' :: Eq a => [a] -> [(a,Int)]
+compress' [] = []
+compress' lst = (head lst, length heads) : compress' rest
+  where (heads,rest) = span (== head lst) lst
+
+-- Композицията на функции се изразява както в математиката
+maxRepeated :: Eq a => [a] -> Int
+--maxRepeated lst = maximum (map snd (compress lst))
+maxRepeated = maximum . (map snd) . compress
+
+makeSet :: Eq a => [a] -> [a]
+makeSet [] = []
+makeSet (x:xs) = x : makeSet (filter (/=x) xs)
+
+histogram lst = map (\el -> (el, count el lst)) (makeSet lst)
+  where count x lst = length $ filter (==x) lst
